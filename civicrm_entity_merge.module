@@ -1,0 +1,43 @@
+<?php
+
+/**
+ * Feeds plugins
+ */
+function civicrm_entity_merge_cron() {
+  civicrm_initialize();
+  // Get all entity reference fields.
+  $erFields = field_read_fields(['type' => 'entityreference']);
+  // Filter this list down to CiviCRM Contact entity reference fields.
+  foreach ($erFields as $k => $field) {
+    if (!isset($field['foreign keys']['civicrm_contact'])) {
+      unset($erFields[$k]);
+    }
+  }
+  // For each field, get a list of all the values that correspond to a deleted contact.
+  // Make sure we're only looking at the latest node revisions.
+  foreach ($erFields as $field) {
+    $fieldName = $field['field_name'] . '_target_id';
+    $shortFieldName = $field['field_name'];
+    $tableName = array_keys($field['storage']['details']['sql']['FIELD_LOAD_CURRENT'])[0];
+    if ($tableName) {
+      $query = db_query("SELECT {$tableName}.* FROM {$tableName} JOIN node_revision ON node_revision.vid = {$tableName}.revision_id JOIN {civicrm_contact} ON {$tableName}.$fieldName = civicrm_contact.id WHERE civicrm_contact.is_deleted = 1");
+      $fieldsNeedingUpdate = $query->fetchAll();
+      // Iterate through the entity references that reference a deleted contact to see if they've been merged.
+      foreach ($fieldsNeedingUpdate as $fieldNeedingUpdate) {
+        $fieldNeedingUpdate = (array) $fieldNeedingUpdate;
+        $result = civicrm_api3('Contact', 'getmergedto', [
+          'contact_id' => $fieldNeedingUpdate[$fieldName],
+        ]);
+        //Update the field's target ID if we found they've been merged to another contact.
+        if ($result['id']) {
+          $node = node_load($fieldNeedingUpdate['entity_id']);
+          $lang = $fieldNeedingUpdate['language'];
+          $delta = $fieldNeedingUpdate['delta'];
+          // It shouldn't be possible to have a non-numeric contact ID returned but we cast anyway for anti-SQL injection.
+          $node->$shortFieldName[$lang][$delta]['target_id'] = (int) $result['id'];
+          node_save($node);
+        }
+      }
+    }
+  }
+}

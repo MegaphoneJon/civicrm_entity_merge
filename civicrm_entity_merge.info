@@ -1,0 +1,16 @@
+name = CiviCRM Entity Merge
+description = Automatically updates Entity References to CiviCRM when contacts are merged.
+package = CiviCRM
+version = 1.0
+core = 7.x
+
+dependencies[] = civicrm
+dependencies[] = civicrm_entity
+
+
+; Information added by Drupal.org packaging script on 2018-03-23
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "civicrm_entity_merge"
+datestamp = "1521769687"
+
