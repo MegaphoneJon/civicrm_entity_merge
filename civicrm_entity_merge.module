@@ -18,7 +18,9 @@ function civicrm_entity_merge_cron() {
   foreach ($erFields as $field) {
     $fieldName = $field['field_name'] . '_target_id';
     $shortFieldName = $field['field_name'];
-    $tableName = array_keys($field['storage']['details']['sql']['FIELD_LOAD_CURRENT'])[0];
+    if($field['storage']['details']['sql']['FIELD_LOAD_CURRENT'] ?? FALSE) {
+      $tableName = array_keys($field['storage']['details']['sql']['FIELD_LOAD_CURRENT'])[0];
+    }
     if ($tableName) {
       $query = db_query("SELECT {$tableName}.* FROM {$tableName} JOIN node_revision ON node_revision.vid = {$tableName}.revision_id JOIN {civicrm_contact} ON {$tableName}.$fieldName = civicrm_contact.id WHERE civicrm_contact.is_deleted = 1");
       $fieldsNeedingUpdate = $query->fetchAll();
